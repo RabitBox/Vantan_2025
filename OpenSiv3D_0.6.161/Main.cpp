@@ -107,8 +107,6 @@ public:
 	}
 };
 
-void BallUpdate(const Circle& ball, Vec2& ballVelocity);
-
 void Main()
 {
 	Ball* pBall = new Ball( Circle{ 400, 400, 8 } );
@@ -146,21 +144,4 @@ void Main()
 
 	delete pBall;
 	delete pPaddle;
-}
-
-void BallUpdate(const Circle& ball, Vec2& ballVelocity) {
-	// 天井にぶつかったら | If the ball hits the ceiling
-	if ((ball.y < 0) && (ballVelocity.y < 0))
-	{
-		// ボールの速度の Y 成分の符号を反転する | Reverse the sign of the Y component of the ball's velocity
-		ballVelocity.y *= -1;
-	}
-
-	// 左右の壁にぶつかったら | If the ball hits the left or right wall
-	if (((ball.x < 0) && (ballVelocity.x < 0))
-		|| ((Scene::Width() < ball.x) && (0 < ballVelocity.x)))
-	{
-		// ボールの速度の X 成分の符号を反転する | Reverse the sign of the X component of the ball's velocity
-		ballVelocity.x *= -1;
-	}
 }
