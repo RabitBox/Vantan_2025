@@ -10,9 +10,11 @@ class GameObject {
 public:
 	virtual void draw() = 0;
 	virtual void update() = 0;
+
+	~GameObject() {}
 };
 
-class Ball final {
+class Ball final : public GameObject {
 	const double SPEED = 480.0;
 
 private:
@@ -23,8 +25,8 @@ private:
 	friend class Brock;
 
 public:
-	void draw() { _shape.draw(); }
-	void update() {
+	void draw() override { _shape.draw(); }
+	void update() override {
 		_shape.moveBy(_velocity * Scene::DeltaTime());
 
 		if ((_shape.y < 0) && (_velocity.y < 0))
@@ -46,16 +48,15 @@ public:
 	~Ball() {}
 };
 
-class Brock {
+class Brock : public GameObject {
 	const Size SIZE{ 40, 20 };
 
 private:
 	Rect _shape;
 
 public:
-	void draw() {
-		_shape.stretched(-1).draw(HSV{ _shape.y - 40 });
-	}
+	void draw() override { _shape.stretched(-1).draw(HSV{ _shape.y - 40 }); }
+	void update() override {}
 
 	Brock() : _shape(Rect{0,0,SIZE}) {}
 	Brock(Rect shape) : _shape(shape) {}
@@ -83,8 +84,7 @@ public:
 	}
 };
 
-class Paddle final
-	: private GameObject {
+class Paddle final	: private GameObject {
 private:
 	Rect _shape;
 
