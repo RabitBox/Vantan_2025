@@ -6,6 +6,12 @@ namespace {
 	constexpr int MAX		= Y_COUNT * X_COUNT;
 }
 
+class GameObject {
+public:
+	virtual void draw() = 0;
+	virtual void update() = 0;
+};
+
 class Brock {
 	const Size SIZE{ 40, 20 };
 
@@ -34,6 +40,8 @@ private:
 	Circle _shape;
 	Vec2 _velocity;
 
+	friend class Paddle;
+
 public:
 	void draw() { _shape.draw(); }
 	void update() {
@@ -58,13 +66,14 @@ public:
 	~Ball() {}
 };
 
-class Paddle final{
+class Paddle final
+	: private GameObject {
 private:
 	Rect _shape;
 
 public:
-	void draw() { _shape.rounded(3).draw(); }
-	void update() {
+	void draw() override { _shape.rounded(3).draw(); }
+	void update() override {
 		_shape.x = Cursor::Pos().x;
 	}
 
@@ -72,7 +81,12 @@ public:
 	~Paddle() {}
 
 	void checkIntersects(Ball* ball) {
-		
+		if (_shape.intersects(ball->_shape)) {
+			ball->_velocity = Vec2{
+				(ball->_shape.x - _shape.center().x) * 10,
+				-ball->_velocity.y
+			}.setLength(ball->SPEED);
+		}
 	}
 };
 
@@ -133,6 +147,8 @@ void Main()
 
 		pBall->update();
 		pPaddle->update();
+
+		pPaddle->checkIntersects( pBall );
 
 		for (int i = 0; i < MAX; i++) {
 			brocks[i].draw();
