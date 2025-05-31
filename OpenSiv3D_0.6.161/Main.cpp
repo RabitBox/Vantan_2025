@@ -11,7 +11,9 @@ public:
 	virtual void draw() = 0;
 	virtual void update() = 0;
 
-	~GameObject() {}
+	virtual bool checkIntersects(GameObject* obj) { return false; }
+
+	virtual ~GameObject() {}
 };
 
 class Ball final : public GameObject {
@@ -67,7 +69,12 @@ public:
 		_shape.y = 60 + y * SIZE.y;
 	}
 
-	bool checkIntersects(Ball* ball) {
+	bool checkIntersects(GameObject* obj) override {
+		auto ball = (Ball*)obj;
+		if (ball == nullptr) {
+			return false;
+		}
+
 		if (_shape.intersects(ball->_shape)) {
 			if (_shape.bottom().intersects(ball->_shape) || _shape.top().intersects(ball->_shape))
 			{
@@ -84,7 +91,7 @@ public:
 	}
 };
 
-class Paddle final	: private GameObject {
+class Paddle final : public GameObject {
 private:
 	Rect _shape;
 
@@ -97,51 +104,86 @@ public:
 	Paddle(Rect shape) : _shape(shape) {}
 	~Paddle() {}
 
-	void checkIntersects(Ball* ball) {
+	bool checkIntersects(GameObject* obj) override {
+		auto ball = (Ball*)obj;
+		if ( ball == nullptr ) {
+			return false;
+		}
+
 		if (_shape.intersects(ball->_shape)) {
 			ball->_velocity = Vec2{
 				(ball->_shape.x - _shape.center().x) * 10,
 				-ball->_velocity.y
 			}.setLength(ball->SPEED);
+
+			return true;
+		}
+
+		return false;
+	}
+};
+
+class GameScene {
+	GameObject*	pBall;
+	GameObject*	pPaddle;
+	GameObject*	pBrocks[MAX];
+
+public:
+	void update() {
+		pBall->update();
+		pPaddle->update();
+
+		pPaddle->checkIntersects(pBall);
+		for (int index = 0; index < sizeof(pBrocks) / sizeof(pBrocks[0]); index++) {
+			if (pBrocks[index]->checkIntersects(pBall)) {
+				break;
+			}
+		}
+	}
+
+	void draw() {
+		for (int i = 0; i < MAX; i++) {
+			pBrocks[i]->draw();
+		}
+		pBall->draw();
+		pPaddle->draw();
+	}
+
+	GameScene()
+		: pBall(new Ball(Circle{ 400, 400, 8 }))
+		, pPaddle(new Paddle(Rect{ Arg::center(100, 500), 60, 10 }))
+	{
+		for (int y = 0; y < Y_COUNT; ++y) {
+			for (int x = 0; x < X_COUNT; ++x) {
+				int index = (y * X_COUNT) + x;
+				pBrocks[index] = new Brock();
+				auto brock = (Brock*)pBrocks[index];
+				if (brock) {
+					brock->initPos(x, y);
+				}
+			}
+		}
+	}
+	virtual ~GameScene() {
+		delete pBall;
+		delete pPaddle;
+		for (int i = 0; i < MAX; ++i) {
+			delete pBrocks[i];
 		}
 	}
 };
 
 void Main()
 {
-	Ball* pBall = new Ball( Circle{ 400, 400, 8 } );
-	Paddle* pPaddle = new Paddle( Rect{ Arg::center(100, 500), 60, 10 } );
-	Brock brocks[MAX];
-
-	for (int y = 0; y < Y_COUNT; ++y) {
-		for (int x = 0; x < X_COUNT; ++x) {
-			int index = (y * X_COUNT) + x;
-			brocks[index].initPos(x,y);
-		}
-	}
+	GameScene scene;
 
 	while (System::Update())
 	{
-		pBall->update();
-		pPaddle->update();
-
-		pPaddle->checkIntersects( pBall );
-		for (int index = 0; index < sizeof(brocks) / sizeof(brocks[0]); index++) {
-			if (brocks[index].checkIntersects( pBall )) {
-				break;
-			}
-		}
+		scene.update();
 
 		// マウスカーソルを非表示にする | Hide the mouse cursor
 		Cursor::RequestStyle(CursorStyle::Hidden);
 
-		for (int i = 0; i < MAX; i++) {
-			brocks[i].draw();
-		}
-		pBall->draw();
-		pPaddle->draw();
+		scene.draw();
 	}
-
-	delete pBall;
-	delete pPaddle;
 }
