@@ -10,30 +10,11 @@ class GameObject {
 public:
 	virtual void draw() = 0;
 	virtual void update() = 0;
+
+	~GameObject() {}
 };
 
-class Brock {
-	const Size SIZE{ 40, 20 };
-
-private:
-	Rect _shape;
-
-public:
-	void draw() {
-		_shape.stretched(-1).draw(HSV{ _shape.y - 40 });
-	}
-
-	Brock() : _shape(Rect{0,0,SIZE}) {}
-	Brock(Rect shape) : _shape(shape) {}
-	virtual ~Brock() {}
-
-	void initPos(int x, int y) {
-		_shape.x = x * SIZE.x;
-		_shape.y = 60 + y * SIZE.y;
-	}
-};
-
-class Ball final{
+class Ball final : public GameObject {
 	const double SPEED = 480.0;
 
 private:
@@ -41,10 +22,11 @@ private:
 	Vec2 _velocity;
 
 	friend class Paddle;
+	friend class Brock;
 
 public:
-	void draw() { _shape.draw(); }
-	void update() {
+	void draw() override { _shape.draw(); }
+	void update() override {
 		_shape.moveBy(_velocity * Scene::DeltaTime());
 
 		if ((_shape.y < 0) && (_velocity.y < 0))
@@ -61,13 +43,48 @@ public:
 
 	Ball(Circle shape) :
 		_shape(shape)
-		, _velocity(Vec2{0, -SPEED}) {
+		, _velocity(Vec2{ 0, -SPEED }) {
 	}
 	~Ball() {}
 };
 
-class Paddle final
-	: private GameObject {
+class Brock : public GameObject {
+	const Size SIZE{ 40, 20 };
+
+private:
+	Rect _shape;
+
+public:
+	void draw() override { _shape.stretched(-1).draw(HSV{ _shape.y - 40 }); }
+	void update() override {}
+
+	Brock() : _shape(Rect{0,0,SIZE}) {}
+	Brock(Rect shape) : _shape(shape) {}
+	virtual ~Brock() {}
+
+	void initPos(int x, int y) {
+		_shape.x = x * SIZE.x;
+		_shape.y = 60 + y * SIZE.y;
+	}
+
+	bool checkIntersects(Ball* ball) {
+		if (_shape.intersects(ball->_shape)) {
+			if (_shape.bottom().intersects(ball->_shape) || _shape.top().intersects(ball->_shape))
+			{
+				ball->_velocity.y *= -1;
+			}
+			else
+			{
+				ball->_velocity.x *= -1;
+			}
+			_shape.y = -100;
+			return true;
+		}
+		return false;
+	}
+};
+
+class Paddle final	: private GameObject {
 private:
 	Rect _shape;
 
@@ -90,8 +107,6 @@ public:
 	}
 };
 
-void BallUpdate(const Circle& ball, Vec2& ballVelocity);
-
 void Main()
 {
 	Ball* pBall = new Ball( Circle{ 400, 400, 8 } );
@@ -105,79 +120,28 @@ void Main()
 		}
 	}
 
-	// ブロックの配列 | Array of bricks
-	//Rect bricks[MAX];
-
-	/*for (int y = 0; y < Y_COUNT; ++y) {
-		for (int x = 0; x < X_COUNT; ++x) {
-			int index = (y * X_COUNT) + x;
-			bricks[index] = Rect{
-				x * BrickSize.x,
-				60 + y * BrickSize.y,
-				BrickSize
-			};
-		}
-	}*/
-
 	while (System::Update())
 	{
-
-		// ブロックを順にチェックする | Check bricks in sequence
-		/*for (int index = 0; index < sizeof(bricks) / sizeof(Rect); index++) {
-			if (bricks[index].intersects(ball)) {
-				if (bricks[index].bottom().intersects(ball) || bricks[index].top().intersects(ball))
-				{
-					ballVelocity.y *= -1;
-				}
-				else
-				{
-					ballVelocity.x *= -1;
-				}
-				bricks[index].y = -100;
-				break;
-			}
-		}*/
-
-		// パドルにあたったら | If the ball hits the left or right wall
-		//if ((0 < ballVelocity.y) && paddle.intersects(ball))
-		//{
-		//	// パドルの中心からの距離に応じてはね返る方向（速度ベクトル）を変える | Change the direction (velocity vector) of the ball depending on the distance from the center of the paddle
-		//	ballVelocity = Vec2{ (ball.x - paddle.center().x) * 10, -ballVelocity.y }.setLength(BallSpeedPerSec);
-		//}
-
 		pBall->update();
 		pPaddle->update();
 
 		pPaddle->checkIntersects( pBall );
-
-		for (int i = 0; i < MAX; i++) {
-			brocks[i].draw();
+		for (int index = 0; index < sizeof(brocks) / sizeof(brocks[0]); index++) {
+			if (brocks[index].checkIntersects( pBall )) {
+				break;
+			}
 		}
 
 		// マウスカーソルを非表示にする | Hide the mouse cursor
 		Cursor::RequestStyle(CursorStyle::Hidden);
 
+		for (int i = 0; i < MAX; i++) {
+			brocks[i].draw();
+		}
 		pBall->draw();
 		pPaddle->draw();
 	}
 
 	delete pBall;
 	delete pPaddle;
-}
-
-void BallUpdate(const Circle& ball, Vec2& ballVelocity) {
-	// 天井にぶつかったら | If the ball hits the ceiling
-	if ((ball.y < 0) && (ballVelocity.y < 0))
-	{
-		// ボールの速度の Y 成分の符号を反転する | Reverse the sign of the Y component of the ball's velocity
-		ballVelocity.y *= -1;
-	}
-
-	// 左右の壁にぶつかったら | If the ball hits the left or right wall
-	if (((ball.x < 0) && (ballVelocity.x < 0))
-		|| ((Scene::Width() < ball.x) && (0 < ballVelocity.x)))
-	{
-		// ボールの速度の X 成分の符号を反転する | Reverse the sign of the X component of the ball's velocity
-		ballVelocity.x *= -1;
-	}
 }
