@@ -17,7 +17,7 @@ public:
 };
 
 class Ball final : public GameObject {
-	const double SPEED = 480.0;
+	static inline const double SPEED = 480.0;
 
 private:
 	Circle _shape;
@@ -124,9 +124,11 @@ public:
 };
 
 class GameScene {
-	GameObject*	pBall;
-	GameObject*	pPaddle;
-	GameObject*	pBrocks[MAX];
+	const int		kX;
+	const int		kY;
+	GameObject*		pBall;
+	GameObject*		pPaddle;
+	GameObject**	pBrocks;
 
 public:
 	void update() {
@@ -134,7 +136,7 @@ public:
 		pPaddle->update();
 
 		pPaddle->checkIntersects(pBall);
-		for (int index = 0; index < sizeof(pBrocks) / sizeof(pBrocks[0]); index++) {
+		for (int index = 0; index < getMax(); index++) {
 			if (pBrocks[index]->checkIntersects(pBall)) {
 				break;
 			}
@@ -142,20 +144,23 @@ public:
 	}
 
 	void draw() {
-		for (int i = 0; i < MAX; i++) {
+		for (int i = 0; i < getMax(); i++) {
 			pBrocks[i]->draw();
 		}
 		pBall->draw();
 		pPaddle->draw();
 	}
 
-	GameScene()
+	GameScene(int x, int y)
 		: pBall(new Ball(Circle{ 400, 400, 8 }))
 		, pPaddle(new Paddle(Rect{ Arg::center(100, 500), 60, 10 }))
+		, kX(x), kY(y)
 	{
-		for (int y = 0; y < Y_COUNT; ++y) {
-			for (int x = 0; x < X_COUNT; ++x) {
-				int index = (y * X_COUNT) + x;
+		pBrocks = new GameObject * [kX * kY] { nullptr }; // 追加処理
+
+		for (int y = 0; y < kY; ++y) {
+			for (int x = 0; x < kX; ++x) {
+				int index = (y * kX) + x;
 				pBrocks[index] = new Brock();
 				auto brock = (Brock*)pBrocks[index];
 				if (brock) {
@@ -164,18 +169,23 @@ public:
 			}
 		}
 	}
+
 	virtual ~GameScene() {
 		delete pBall;
 		delete pPaddle;
-		for (int i = 0; i < MAX; ++i) {
+		for (int i = 0; i < getMax(); ++i) {
 			delete pBrocks[i];
 		}
+		delete[] pBrocks;
 	}
+
+private:
+	inline const int const getMax() const noexcept(true) { return kX * kY; };
 };
 
 void Main()
 {
-	GameScene scene;
+	GameScene scene(20, 5);
 
 	while (System::Update())
 	{
